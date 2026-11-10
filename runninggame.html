@@ -1,0 +1,206 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<title>Subway Runner</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background:#111;
+  font-family:Arial;
+  text-align:center;
+  color:white;
+  overflow:hidden;
+}
+h2 { padding:10px; color:#ffd700; }
+canvas {
+  background:#333;
+  display:block;
+  margin:auto;
+  border:3px solid white;
+  max-width:100vw;
+  max-height:85vh;
+}
+#info { padding:8px; }
+button {
+  padding:12px 22px;
+  background:#ffcc00;
+  border:0;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<h2>🚆 SUBWAY RUNNER</h2>
+<div id="info">Score: <span id="score">0</span>
+ | Coins: <span id="coins">0</span></div>
+<canvas id="game" width="400" height="600"></canvas>
+<p>← → Move | ↑ Jump | ↓ Slide</p>
+<button onclick="startGame()">START GAME</button>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+let player, obstacles, coins, score, coinCount;
+let speed, running=false, jumping=0, sliding=0;
+let frame=0;
+
+function reset(){
+ player={lane:1,x:200,y:480};
+ obstacles=[];
+ coins=[];
+ score=0;
+ coinCount=0;
+ speed=5;
+ frame=0;
+ jumping=0;
+ sliding=0;
+}
+
+function laneX(lane){ return 100+lane*100; }
+
+function startGame(){
+ reset();
+ running=true;
+ requestAnimationFrame(loop);
+}
+
+document.addEventListener("keydown",e=>{
+ if(!running)return;
+ if(e.key==="ArrowLeft") player.lane=Math.max(0,player.lane-1);
+ if(e.key==="ArrowRight") player.lane=Math.min(2,player.lane+1);
+ if(e.key==="ArrowUp" && jumping===0) jumping=30;
+ if(e.key==="ArrowDown") sliding=25;
+});
+
+function spawn(){
+ if(frame%65===0){
+  obstacles.push({
+   lane:Math.floor(Math.random()*3),
+   y:-60,
+   type:Math.random()<0.65?"train":"barrier"
+  });
+ }
+ if(frame%35===0){
+  coins.push({
+   lane:Math.floor(Math.random()*3),
+   y:-20
+  });
+ }
+}
+
+function drawTrack(){
+ ctx.fillStyle="#444";
+ ctx.fillRect(45,0,310,600);
+
+ ctx.strokeStyle="#ddd";
+ ctx.lineWidth=3;
+ for(let x of [145,245]){
+  ctx.beginPath();
+  ctx.moveTo(x,0);
+  ctx.lineTo(x,600);
+  ctx.stroke();
+ }
+ ctx.strokeStyle="#888";
+ for(let y=frame%80;y<600;y+=80){
+  ctx.beginPath();
+  ctx.moveTo(45,y);
+  ctx.lineTo(355,y);
+  ctx.stroke();
+ }
+}
+
+function drawPlayer(){
+ let x=laneX(player.lane);
+ let y=player.y-(jumping>0?60:0);
+
+ ctx.fillStyle="#00ccff";
+ ctx.fillRect(x-17,y-45,34,45);
+
+ ctx.fillStyle="#ffcc99";
+ ctx.beginPath();
+ ctx.arc(x,y-58,15,0,Math.PI*2);
+ ctx.fill();
+
+ ctx.fillStyle="#222";
+ ctx.fillRect(x-17,y-5,12,12);
+ ctx.fillRect(x+5,y-5,12,12);
+}
+
+function loop(){
+ if(!running)return;
+
+ frame++;
+ score++;
+ speed=5+Math.min(8,score/700);
+
+ ctx.clearRect(0,0,400,600);
+ drawTrack();
+ spawn();
+
+ if(jumping>0) jumping--;
+ if(sliding>0) sliding--;
+
+ for(let o of obstacles){
+  o.y+=speed;
+  let x=laneX(o.lane);
+
+  ctx.fillStyle=o.type==="train"?"#e53935":"#ff9900";
+  ctx.fillRect(x-32,o.y,64,o.type==="train"?110:40);
+
+  if(o.lane===player.lane &&
+     o.y+80>player.y-45 &&
+     o.y<player.y &&
+     jumping<5){
+    if(o.type==="train" || sliding===0){
+     running=false;
+    }
+  }
+ }
+
+ for(let c of coins){
+  c.y+=speed;
+  let x=laneX(c.lane);
+  ctx.fillStyle="gold";
+  ctx.beginPath();
+  ctx.arc(x,c.y,10,0,Math.PI*2);
+  ctx.fill();
+
+  if(c.lane===player.lane &&
+     Math.abs(c.y-player.y)<35){
+    c.collected=true;
+    coinCount++;
+  }
+ }
+ obstacles=obstacles.filter(o=>o.y<650);
+ coins=coins.filter(c=>c.y<650&&!c.collected);
+
+ drawPlayer();
+
+ document.getElementById("score").textContent=score;
+ document.getElementById("coins").textContent=coinCount;
+
+ if(!running){
+  ctx.fillStyle="rgba(0,0,0,.8)";
+  ctx.fillRect(0,0,400,600);
+  ctx.fillStyle="white";
+  ctx.font="bold 35px Arial";
+  ctx.fillText("GAME OVER",90,260);
+  ctx.font="20px Arial";
+  ctx.fillText("Score: "+score,150,310);
+  ctx.fillText("Press START to retry",105,360);
+  return;
+ }
+
+ requestAnimationFrame(loop);
+}
+
+reset();
+drawTrack();
+</script>
+</body>
+</html>
